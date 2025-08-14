@@ -50,10 +50,11 @@ with open(".\\server.json") as file:
 
                     filename_arr = fileline_arr[0].split(" ")
 
-                    if len(filename_arr) > 2:
-                        final_file_name= filename_arr[1]+" "+filename_arr[2]+" "+filename_arr[3]
-                    else:
-                        final_file_name= filename_arr[1]
+                    if file_date.date() == today.date():
+                        if len(filename_arr) > 2:
+                            final_file_name= filename_arr[1]+" "+filename_arr[2]+" "+filename_arr[3]
+                        else:
+                            final_file_name= filename_arr[1]
 
                     sftp.get(eweb_path+"\\"+final_file_name,nas_base+"\\"+server["name"]+"\\"+final_file_name)
 
