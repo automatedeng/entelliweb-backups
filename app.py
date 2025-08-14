@@ -1,15 +1,9 @@
-import os
-from dotenv import load_dotenv
 from paramiko import SSHClient, AutoAddPolicy
 from datetime import datetime
 import json
+import logging
 
-
-load_dotenv()
-
-nas_user = os.getenv("NAS_U")
-nas_passw = os.getenv("NAS_P")
-nas_ip = os.getenv("NAS_IP")
+logging.basicConfig(filename=".\\errors.txt", level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
 
 eweb_base = r'"\Program Files (x86)\Delta Controls\enteliWEB\website\support\eweb_backup"'
 eweb_path = r"\Program Files (x86)\Delta Controls\enteliWEB\website\support\eweb_backup"
@@ -21,12 +15,19 @@ with open(".\\server.json") as file:
     servers = json.load(file)
 
     for server in servers:
-        server_client = SSHClient()
-        server_client.set_missing_host_key_policy(AutoAddPolicy)
 
-        server_client.connect(server["ip"],username=server["user"],password=server["passw"], look_for_keys=False)
+        try: 
+            server_client = SSHClient()
+            server_client.set_missing_host_key_policy(AutoAddPolicy)
 
-        stdin, stdout, stderr = server_client.exec_command(r"dir "+eweb_base)
+            server_client.connect(server["ip"],username=server["user"],password=server["passw"], look_for_keys=False)
+        except:
+            logging.error(f"There was an issue with the connection to {server["name"]} with the provided information")
+        
+        try:
+            stdin, stdout, stderr = server_client.exec_command(r"dir "+eweb_base)
+        except:
+            logging.error(f"Could not execute the command in the entelliWeb directory for server {server["name"]}")
 
         backup_files = stdout.read().decode()
 
@@ -37,6 +38,7 @@ with open(".\\server.json") as file:
         final_file_name = None
         date_string = datetime.now().strftime("%Y%m%d")
 
+  
         with server_client.open_sftp() as sftp:
             for index, line in enumerate(lines):
                 if "Backup" in line:
@@ -56,8 +58,10 @@ with open(".\\server.json") as file:
                         else:
                             final_file_name= filename_arr[1]
 
-                    sftp.get(eweb_path+"\\"+final_file_name,nas_base+"\\"+server["name"]+"\\"+final_file_name)
-
+                    try:
+                        sftp.get(eweb_path+"\\"+final_file_name,nas_base+"\\"+server["name"]+"\\"+final_file_name)
+                    except:
+                        logging.error(f"There was an error saving the file {final_file_name} to the NAS Server")
             
             sftp.close()
         
